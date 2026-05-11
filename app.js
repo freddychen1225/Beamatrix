@@ -65,7 +65,6 @@ let state = null;
 let isTransitioning = false;
 let isAnimating = false;
 let animationFrameId = null;
-let playerFxLayer = null;
 
 function cloneGrid(grid) {
   return grid.map((row) => [...row]);
@@ -88,102 +87,6 @@ function countStars(grid) {
     }
   }
   return count;
-}
-
-function injectPlayerFxStyles() {
-  if (document.getElementById("beamatrix-playerfx-style")) return;
-
-  const style = document.createElement("style");
-  style.id = "beamatrix-playerfx-style";
-  style.textContent = `
-    .player-fx-layer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      z-index: 18;
-    }
-
-    .player-highlight {
-      position: absolute;
-      width: calc(var(--cell-size) * 0.92);
-      height: calc(var(--cell-size) * 0.92);
-      transform: translate(-50%, -50%);
-      border-radius: calc(var(--cell-size) * 0.26);
-      background:
-        linear-gradient(180deg, rgba(118, 232, 255, 0.34), rgba(83, 216, 251, 0.18));
-      box-shadow:
-        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
-        0 0 18px rgba(83, 216, 251, 0.26);
-      backdrop-filter: blur(2px);
-    }
-
-    .player-highlight::before {
-      content: "";
-      position: absolute;
-      inset: 18%;
-      border-radius: calc(var(--cell-size) * 0.18);
-      background:
-        radial-gradient(circle at 50% 50%, rgba(225, 251, 255, 0.75), rgba(83, 216, 251, 0.18) 60%, transparent 75%);
-      opacity: 0.95;
-    }
-
-    .player-highlight::after {
-      content: "";
-      position: absolute;
-      width: 28%;
-      height: 28%;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 999px;
-      background: radial-gradient(circle at 35% 35%, #effcff 0%, #aef3ff 35%, #53d8fb 72%, #29bce6 100%);
-      box-shadow:
-        0 0 10px rgba(83, 216, 251, 0.95),
-        0 0 18px rgba(83, 216, 251, 0.32);
-    }
-
-    .player-highlight.dir-up {
-      box-shadow:
-        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
-        0 -6px 22px rgba(83, 216, 251, 0.28);
-    }
-
-    .player-highlight.dir-down {
-      box-shadow:
-        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
-        0 6px 22px rgba(83, 216, 251, 0.28);
-    }
-
-    .player-highlight.dir-left {
-      box-shadow:
-        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
-        -6px 0 22px rgba(83, 216, 251, 0.28);
-    }
-
-    .player-highlight.dir-right {
-      box-shadow:
-        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
-        6px 0 22px rgba(83, 216, 251, 0.28);
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-function ensurePlayerFxLayer() {
-  injectPlayerFxStyles();
-
-  const wrap = boardEl.parentElement;
-  if (getComputedStyle(wrap).position === "static") {
-    wrap.style.position = "relative";
-  }
-
-  if (!playerFxLayer) {
-    playerFxLayer = document.createElement("div");
-    playerFxLayer.className = "player-fx-layer";
-    wrap.appendChild(playerFxLayer);
-  }
-
-  playerFxLayer.innerHTML = "";
 }
 
 function updateBoardScale() {
@@ -251,21 +154,11 @@ function setMessage(text) {
 }
 
 function turnLeft(dir) {
-  return {
-    up: "left",
-    left: "down",
-    down: "right",
-    right: "up"
-  }[dir];
+  return { up: "left", left: "down", down: "right", right: "up" }[dir];
 }
 
 function turnRight(dir) {
-  return {
-    up: "right",
-    right: "down",
-    down: "left",
-    left: "up"
-  }[dir];
+  return { up: "right", right: "down", down: "left", left: "up" }[dir];
 }
 
 function dirVector(dir) {
@@ -345,39 +238,13 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function renderPlayerFx() {
-  ensurePlayerFxLayer();
-
-  const fx = document.createElement("div");
-  fx.className = `player-highlight dir-${state.playerDir}`;
-
-  const wrapRect = boardEl.parentElement.getBoundingClientRect();
-  const boardRect = boardEl.getBoundingClientRect();
-  const cellSize = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
-  ) || 68;
-  const boardGap = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--board-gap")
-  ) || 6;
-  const step = cellSize + boardGap;
-
-  const startX = boardRect.left - wrapRect.left + cellSize / 2;
-  const startY = boardRect.top - wrapRect.top + cellSize / 2;
-
-  const px = startX + state.playerRender.x * step;
-  const py = startY + state.playerRender.y * step;
-
-  fx.style.left = `${px}px`;
-  fx.style.top = `${py}px`;
-
-  playerFxLayer.appendChild(fx);
-}
-
 function render() {
   const {
     grid,
     width,
     player,
+    playerRender,
+    playerDir,
     starsCollected,
     starsTotal,
     moves,
@@ -388,6 +255,9 @@ function render() {
 
   boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
   boardEl.innerHTML = "";
+
+  const displayX = Math.round(playerRender.x);
+  const displayY = Math.round(playerRender.y);
 
   const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
 
@@ -417,8 +287,12 @@ function render() {
         cell.classList.add("start-glow");
       }
 
+      if (displayX === x && displayY === y) {
+        cell.classList.add("player-cell", `dir-${playerDir}`);
+      }
+
       if (player.x === x && player.y === y && !isAnimating) {
-        cell.classList.add("trail-strong");
+        cell.classList.add("player-cell", `dir-${playerDir}`);
       }
 
       boardEl.appendChild(cell);
@@ -428,8 +302,6 @@ function render() {
   levelLabelEl.textContent = levelId;
   starLabelEl.textContent = `${starsCollected} / ${starsTotal}`;
   moveLabelEl.textContent = moves;
-
-  renderPlayerFx();
 }
 
 function animateMove(steps) {
@@ -506,7 +378,7 @@ function animateMove(steps) {
       y: from.y + (to.y - from.y) * eased
     };
 
-    renderPlayerFx();
+    render();
 
     if (progress < 1) {
       animationFrameId = requestAnimationFrame(tick);
