@@ -54,6 +54,9 @@ const overlayTitleEl = document.getElementById("overlayTitle");
 const overlayTextEl = document.getElementById("overlayText");
 const overlayBtnEl = document.getElementById("overlayBtn");
 
+const MAX_STAGE_COLS = 7;
+const MAX_STAGE_ROWS = 7;
+
 let currentLevelIndex = 0;
 let state = null;
 let isTransitioning = false;
@@ -81,22 +84,26 @@ function countStars(grid) {
   return count;
 }
 
-function updateBoardScale(width, height) {
+function updateBoardScale() {
   const root = document.documentElement;
-  const appStyle = getComputedStyle(root);
-  const boardGap = parseFloat(appStyle.getPropertyValue("--board-gap")) || 6;
+  const style = getComputedStyle(root);
+  const boardGap = parseFloat(style.getPropertyValue("--board-gap")) || 6;
 
-  const safeHorizontal = 28;
-  const safeVertical = 28;
+  const sidePadding = 42;
+  const topUiReserve = 310;
 
-  const availableWidth = Math.max(280, window.innerWidth - safeHorizontal);
-  const availableHeight = Math.max(280, window.innerHeight - 320 - safeVertical);
+  const availableWidth = Math.max(300, window.innerWidth - sidePadding);
+  const availableHeight = Math.max(300, window.innerHeight - topUiReserve);
 
-  const sizeByWidth = (availableWidth - boardGap * (width - 1)) / width;
-  const sizeByHeight = (availableHeight - boardGap * (height - 1)) / height;
+  const sizeByWidth = (availableWidth - boardGap * (MAX_STAGE_COLS - 1)) / MAX_STAGE_COLS;
+  const sizeByHeight = (availableHeight - boardGap * (MAX_STAGE_ROWS - 1)) / MAX_STAGE_ROWS;
 
   const cellSize = Math.floor(Math.min(sizeByWidth, sizeByHeight, 82));
-  root.style.setProperty("--cell-size", `${Math.max(cellSize, 44)}px`);
+  const finalCellSize = Math.max(cellSize, 44);
+  const stageSize = finalCellSize * MAX_STAGE_COLS + boardGap * (MAX_STAGE_COLS - 1);
+
+  root.style.setProperty("--cell-size", `${finalCellSize}px`);
+  root.style.setProperty("--stage-size", `${stageSize}px`);
 }
 
 function loadLevel(index) {
@@ -122,7 +129,7 @@ function loadLevel(index) {
     startGlow: { ...start }
   };
 
-  updateBoardScale(state.width, state.height);
+  updateBoardScale();
   hideOverlay();
   render();
   setMessage("請在棋盤上滑動開始。");
@@ -396,9 +403,8 @@ boardEl.addEventListener("pointercancel", () => {
 });
 
 window.addEventListener("resize", () => {
-  if (!state) return;
-  updateBoardScale(state.width, state.height);
-  render();
+  updateBoardScale();
+  if (state) render();
 });
 
 loadLevel(currentLevelIndex);
