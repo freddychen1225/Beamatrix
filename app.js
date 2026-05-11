@@ -58,10 +58,13 @@ const overlayBtnEl = document.getElementById("overlayBtn");
 
 const MAX_STAGE_COLS = 6;
 const MAX_STAGE_ROWS = 6;
+const STEP_DURATION = 105;
 
 let currentLevelIndex = 0;
 let state = null;
 let isTransitioning = false;
+let isAnimating = false;
+let animationFrameId = null;
 
 function cloneGrid(grid) {
   return grid.map((row) => [...row]);
@@ -109,6 +112,13 @@ function updateBoardScale() {
 }
 
 function loadLevel(index) {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+  }
+
+  isAnimating = false;
+
   const level = LEVELS[index];
   const grid = cloneGrid(level.grid);
   const start = findStart(grid);
@@ -124,6 +134,7 @@ function loadLevel(index) {
     height: grid.length,
     player: { ...start },
     playerDir: "right",
+    playerRender: { x: start.x, y: start.y },
     starsCollected: 0,
     starsTotal: countStars(grid),
     moves: 0,
@@ -142,9 +153,13 @@ function setMessage(text) {
   messageEl.textContent = text;
 }
 
-function createPlayerOrb(dir) {
+function createPlayerOrb(dir, offsetX = 0, offsetY = 0) {
+  const wrap = document.createElement("div");
+  wrap.className = `player dir-${dir}`;
+  wrap.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
   const orb = document.createElement("div");
-  orb.className = `orb`;
+  orb.className = "orb";
 
   const trail = document.createElement("div");
   trail.className = "orb-trail";
@@ -154,19 +169,34 @@ function createPlayerOrb(dir) {
 
   orb.appendChild(trail);
   orb.appendChild(core);
-
-  const wrap = document.createElement("div");
-  wrap.className = `player dir-${dir}`;
   wrap.appendChild(orb);
 
   return wrap;
+}
+
+function getRenderPlacement() {
+  const renderPos = state.playerRender || state.player;
+  const anchorX = Math.round(renderPos.x);
+  const anchorY = Math.round(renderPos.y);
+
+  const cellSize = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
+  ) || 68;
+  const boardGap = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--board-gap")
+  ) || 6;
+
+  const step = cellSize + boardGap;
+  const offsetX = (renderPos.x - anchorX) * step;
+  const offsetY = (renderPos.y - anchorY) * step;
+
+  return { anchorX, anchorY, offsetX, offsetY };
 }
 
 function render() {
   const {
     grid,
     width,
-    player,
     playerDir,
     starsCollected,
     starsTotal,
@@ -179,6 +209,7 @@ function render() {
   boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
   boardEl.innerHTML = "";
 
+  const { anchorX, anchorY, offsetX, offsetY } = getRenderPlacement();
   const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
 
   for (let y = 0; y < grid.length; y += 1) {
@@ -207,11 +238,11 @@ function render() {
         cell.classList.add("start-glow");
       }
 
-      if (player.x === x && player.y === y) {
+      if (anchorX === x && anchorY === y) {
         if (![TILE.WALL, TILE.LEFT, TILE.RIGHT, TILE.EXIT, TILE.STOP].includes(tile)) {
           cell.classList.add("floor");
         }
-        cell.appendChild(createPlayerOrb(playerDir));
+        cell.appendChild(createPlayerOrb(playerDir, offsetX, offsetY));
       }
 
       boardEl.appendChild(cell);
@@ -257,13 +288,10 @@ function isBlocked(x, y) {
   return state.grid[y][x] === TILE.WALL;
 }
 
-function move(dir) {
-  if (!state || state.cleared || isTransitioning) return;
-
+function buildMovePath(initialDir) {
   let { x, y } = state.player;
-  let currentDir = dir;
-  let moved = false;
-  const traveled = [];
+  let currentDir = initialDir;
+  const steps = [];
 
   while (true) {
     const { dx, dy } = dirVector(currentDir);
@@ -274,37 +302,55 @@ function move(dir) {
 
     x = nx;
     y = ny;
-    moved = true;
-    traveled.push({ x, y });
 
     const tile = state.grid[y][x];
+    let nextDir = currentDir;
+    let collectStar = false;
+    let stopAfterStep = false;
+    let levelClear = false;
 
     if (tile === TILE.STAR) {
-      state.starsCollected += 1;
-      state.grid[y][x] = TILE.FLOOR;
+      collectStar = true;
     } else if (tile === TILE.LEFT) {
-      currentDir = turnLeft(currentDir);
+      nextDir = turnLeft(currentDir);
     } else if (tile === TILE.RIGHT) {
-      currentDir = turnRight(currentDir);
+      nextDir = turnRight(currentDir);
     } else if (tile === TILE.STOP) {
-      break;
+      stopAfterStep = true;
     } else if (tile === TILE.EXIT) {
-      if (state.starsCollected === state.starsTotal) {
-        state.player = { x, y };
-        state.playerDir = currentDir;
-        state.startGlow = { x, y };
-        state.lastTrail = traveled;
-        state.moves += 1;
-        state.cleared = true;
-        render();
-        onLevelClear();
-        return;
+      if (state.starsCollected + steps.filter((s) => s.collectStar).length + (collectStar ? 1 : 0) === state.starsTotal) {
+        levelClear = true;
+        stopAfterStep = true;
+      } else {
+        stopAfterStep = true;
       }
-      break;
     }
+
+    steps.push({
+      x,
+      y,
+      dir: currentDir,
+      tile,
+      collectStar,
+      nextDir,
+      stopAfterStep,
+      levelClear
+    });
+
+    currentDir = nextDir;
+
+    if (stopAfterStep) break;
   }
 
-  if (!moved) {
+  return steps;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function animateMove(steps, fallbackDir) {
+  if (!steps.length) {
     setMessage("這個方向無法前進。");
     boardEl.animate(
       [
@@ -318,18 +364,93 @@ function move(dir) {
     return;
   }
 
-  state.player = { x, y };
-  state.playerDir = currentDir;
-  state.startGlow = { x, y };
-  state.lastTrail = traveled;
+  isAnimating = true;
   state.moves += 1;
-  render();
+  moveLabelEl.textContent = state.moves;
 
-  if (state.starsCollected < state.starsTotal) {
-    setMessage("先收集全部能量星。");
-  } else {
-    setMessage("能量已滿，前往出口。");
+  let stepIndex = 0;
+  let segmentStart = null;
+  let from = { ...state.player };
+  let to = { x: steps[0].x, y: steps[0].y };
+
+  function finishStep(step) {
+    state.player = { x: step.x, y: step.y };
+    state.playerRender = { x: step.x, y: step.y };
+    state.playerDir = step.nextDir || step.dir;
+
+    if (step.collectStar && state.grid[step.y][step.x] === TILE.STAR) {
+      state.starsCollected += 1;
+      state.grid[step.y][step.x] = TILE.FLOOR;
+      starLabelEl.textContent = `${state.starsCollected} / ${state.starsTotal}`;
+    }
+
+    state.lastTrail = steps.slice(0, stepIndex + 1).map((s) => ({ x: s.x, y: s.y }));
+    state.startGlow = { x: step.x, y: step.y };
   }
+
+  function finishAnimation(finalStep) {
+    isAnimating = false;
+    animationFrameId = null;
+
+    if (finalStep.levelClear) {
+      state.cleared = true;
+      render();
+      onLevelClear();
+      return;
+    }
+
+    render();
+
+    if (state.starsCollected < state.starsTotal) {
+      setMessage("先收集全部能量星。");
+    } else {
+      setMessage("能量已滿，前往出口。");
+    }
+  }
+
+  function tick(timestamp) {
+    if (!segmentStart) segmentStart = timestamp;
+
+    const elapsed = timestamp - segmentStart;
+    const progress = Math.min(elapsed / STEP_DURATION, 1);
+    const eased = easeOutCubic(progress);
+
+    const currentStep = steps[stepIndex];
+    state.playerDir = currentStep.dir;
+    state.playerRender = {
+      x: from.x + (to.x - from.x) * eased,
+      y: from.y + (to.y - from.y) * eased
+    };
+
+    render();
+
+    if (progress < 1) {
+      animationFrameId = requestAnimationFrame(tick);
+      return;
+    }
+
+    finishStep(currentStep);
+
+    if (currentStep.stopAfterStep || stepIndex >= steps.length - 1) {
+      finishAnimation(currentStep);
+      return;
+    }
+
+    stepIndex += 1;
+    segmentStart = timestamp;
+    from = { x: steps[stepIndex - 1].x, y: steps[stepIndex - 1].y };
+    to = { x: steps[stepIndex].x, y: steps[stepIndex].y };
+    animationFrameId = requestAnimationFrame(tick);
+  }
+
+  animationFrameId = requestAnimationFrame(tick);
+}
+
+function move(dir) {
+  if (!state || state.cleared || isTransitioning || isAnimating) return;
+
+  const path = buildMovePath(dir);
+  animateMove(path, dir);
 }
 
 function onLevelClear() {
@@ -396,6 +517,7 @@ let pointerStartTime = 0;
 let isPointerDown = false;
 
 boardEl.addEventListener("pointerdown", (e) => {
+  if (isAnimating) return;
   isPointerDown = true;
   pointerStartX = e.clientX;
   pointerStartY = e.clientY;
