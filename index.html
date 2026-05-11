@@ -24,7 +24,9 @@
         <h1>光軌矩陣</h1>
         <p>Beamatrix</p>
       </div>
-      <button id="restartBtn" class="btn ghost">重來</button>
+      <div class="top-actions">
+        <button id="restartBtn" class="btn ghost">重來</button>
+      </div>
     </header>
 
     <main class="main">
@@ -47,27 +49,40 @@
         <div id="board" class="board" aria-label="遊戲棋盤"></div>
       </section>
 
+      <section class="panel instruction-panel">
+        <p class="instruction-title">操作方式</p>
+        <p class="instruction-text">在棋盤上朝四個方向滑動，光球會一路滑行，直到撞牆、踩到停止格，或被導流板轉向。</p>
+      </section>
+
       <section class="panel legend">
         <div class="legend-item"><span class="chip wall"></span><span>牆</span></div>
         <div class="legend-item"><span class="chip floor"></span><span>地板</span></div>
-        <div class="legend-item"><span class="chip left"></span><span>左轉板</span></div>
-        <div class="legend-item"><span class="chip right"></span><span>右轉板</span></div>
+        <div class="legend-item"><span class="chip left"></span><span>左導流板</span></div>
+        <div class="legend-item"><span class="chip right"></span><span>右導流板</span></div>
         <div class="legend-item"><span class="chip stop"></span><span>停止格</span></div>
         <div class="legend-item"><span class="chip star"></span><span>能量星</span></div>
         <div class="legend-item"><span class="chip exit"></span><span>出口</span></div>
       </section>
 
-      <section class="controls">
-        <button class="btn move" data-dir="up">↑</button>
+      <section class="controls compact-controls">
+        <button class="btn move" data-dir="up" aria-label="上">↑</button>
         <div class="middle-row">
-          <button class="btn move" data-dir="left">←</button>
-          <button class="btn move" data-dir="down">↓</button>
-          <button class="btn move" data-dir="right">→</button>
+          <button class="btn move" data-dir="left" aria-label="左">←</button>
+          <button class="btn move" data-dir="down" aria-label="下">↓</button>
+          <button class="btn move" data-dir="right" aria-label="右">→</button>
         </div>
       </section>
 
-      <p id="message" class="message">滑動或按方向鍵開始。</p>
+      <p id="message" class="message">請在棋盤上滑動開始。</p>
     </main>
+  </div>
+
+  <div id="overlay" class="overlay hidden">
+    <div class="modal">
+      <h2 id="overlayTitle">過關成功</h2>
+      <p id="overlayText">準備進入下一關</p>
+      <button id="overlayBtn" class="btn primary">下一步</button>
+    </div>
   </div>
 
   <script src="./app.js"></script>

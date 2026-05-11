@@ -13,7 +13,6 @@ const TILE = {
 const LEVELS = [
   {
     id: 1,
-    starsRequired: 1,
     grid: [
       [1,1,1,1,1,1],
       [1,7,2,5,2,1],
@@ -24,7 +23,6 @@ const LEVELS = [
   },
   {
     id: 2,
-    starsRequired: 1,
     grid: [
       [1,1,1,1,1,1],
       [1,7,2,4,5,1],
@@ -35,7 +33,6 @@ const LEVELS = [
   },
   {
     id: 3,
-    starsRequired: 2,
     grid: [
       [1,1,1,1,1,1,1],
       [1,7,2,3,2,5,1],
@@ -53,9 +50,14 @@ const starLabelEl = document.getElementById("starLabel");
 const moveLabelEl = document.getElementById("moveLabel");
 const restartBtn = document.getElementById("restartBtn");
 const moveButtons = document.querySelectorAll(".btn.move");
+const overlayEl = document.getElementById("overlay");
+const overlayTitleEl = document.getElementById("overlayTitle");
+const overlayTextEl = document.getElementById("overlayText");
+const overlayBtnEl = document.getElementById("overlayBtn");
 
 let currentLevelIndex = 0;
 let state = null;
+let isTransitioning = false;
 
 function cloneGrid(grid) {
   return grid.map(row => [...row]);
@@ -64,9 +66,7 @@ function cloneGrid(grid) {
 function findStart(grid) {
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
-      if (grid[y][x] === TILE.START) {
-        return { x, y };
-      }
+      if (grid[y][x] === TILE.START) return { x, y };
     }
   }
   return { x: 1, y: 1 };
@@ -103,8 +103,9 @@ function loadLevel(index) {
     cleared: false
   };
 
+  hideOverlay();
   render();
-  setMessage("滑動或按方向鍵開始。");
+  setMessage("請在棋盤上滑動開始。");
 }
 
 function setMessage(text) {
@@ -172,7 +173,7 @@ function isBlocked(x, y) {
 }
 
 function move(dir) {
-  if (!state || state.cleared) return;
+  if (!state || state.cleared || isTransitioning) return;
 
   let { x, y } = state.player;
   let currentDir = dir;
@@ -206,7 +207,7 @@ function move(dir) {
         state.moves += 1;
         state.cleared = true;
         render();
-        setMessage("過關成功！先做到這裡，下一步再加下一關流程。");
+        onLevelClear();
         return;
       } else {
         break;
@@ -230,6 +231,47 @@ function move(dir) {
   }
 }
 
+function onLevelClear() {
+  isTransitioning = true;
+
+  const isLastLevel = currentLevelIndex >= LEVELS.length - 1;
+
+  if (isLastLevel) {
+    showOverlay("全部完成", `你已完成目前的 ${LEVELS.length} 個測試關卡。`, "重新開始", () => {
+      currentLevelIndex = 0;
+      isTransitioning = false;
+      loadLevel(currentLevelIndex);
+    });
+    setMessage("全部關卡完成。");
+    return;
+  }
+
+  showOverlay(
+    "過關成功",
+    `第 ${state.levelId} 關完成，共用了 ${state.moves} 步。`,
+    "前往下一關",
+    () => {
+      currentLevelIndex += 1;
+      isTransitioning = false;
+      loadLevel(currentLevelIndex);
+    }
+  );
+
+  setMessage("過關成功。");
+}
+
+function showOverlay(title, text, buttonText, onClick) {
+  overlayTitleEl.textContent = title;
+  overlayTextEl.textContent = text;
+  overlayBtnEl.textContent = buttonText;
+  overlayBtnEl.onclick = onClick;
+  overlayEl.classList.remove("hidden");
+}
+
+function hideOverlay() {
+  overlayEl.classList.add("hidden");
+}
+
 moveButtons.forEach(btn => {
   btn.addEventListener("click", () => move(btn.dataset.dir));
 });
@@ -247,19 +289,23 @@ window.addEventListener("keydown", (e) => {
 
 let touchStartX = 0;
 let touchStartY = 0;
+let touchStartTime = 0;
 
 boardEl.addEventListener("touchstart", (e) => {
   const t = e.changedTouches[0];
   touchStartX = t.clientX;
   touchStartY = t.clientY;
+  touchStartTime = Date.now();
 }, { passive: true });
 
 boardEl.addEventListener("touchend", (e) => {
   const t = e.changedTouches[0];
   const dx = t.clientX - touchStartX;
   const dy = t.clientY - touchStartY;
+  const dt = Date.now() - touchStartTime;
 
-  if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+  if (dt > 700) return;
+  if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
 
   if (Math.abs(dx) > Math.abs(dy)) {
     move(dx > 0 ? "right" : "left");

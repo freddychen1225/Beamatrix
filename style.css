@@ -60,6 +60,11 @@ button {
   align-items: center;
 }
 
+.top-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .brand h1 {
   margin: 0;
   font-size: 1.6rem;
@@ -226,6 +231,22 @@ button {
 .chip.star { background: var(--star); }
 .chip.exit { background: var(--exit); }
 
+.instruction-panel {
+  text-align: center;
+}
+
+.instruction-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+}
+
+.instruction-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
 .controls {
   display: flex;
   flex-direction: column;
@@ -236,6 +257,10 @@ button {
 .middle-row {
   display: flex;
   gap: 10px;
+}
+
+.compact-controls {
+  opacity: 0.92;
 }
 
 .btn {
@@ -251,13 +276,18 @@ button {
   color: var(--text);
 }
 
-.btn.move {
-  min-width: 72px;
-  min-height: 56px;
+.btn.primary {
   background: linear-gradient(180deg, #1f8ef1, #1768c6);
   color: white;
+}
+
+.btn.move {
+  min-width: 64px;
+  min-height: 50px;
+  background: linear-gradient(180deg, #243b68, #1c2f52);
+  color: white;
   box-shadow: var(--shadow);
-  font-size: 1.3rem;
+  font-size: 1.1rem;
 }
 
 .message {
@@ -266,6 +296,40 @@ button {
   text-align: center;
   color: var(--accent-2);
   font-weight: 700;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 18, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 20;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.modal {
+  width: min(100%, 360px);
+  background: linear-gradient(180deg, #18233a, #101827);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.modal h2 {
+  margin: 0 0 10px;
+}
+
+.modal p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 @media (max-width: 420px) {
@@ -278,7 +342,11 @@ button {
   }
 
   .btn.move {
-    min-width: 64px;
-    min-height: 52px;
+    min-width: 58px;
+    min-height: 46px;
+  }
+
+  .legend {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
