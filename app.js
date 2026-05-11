@@ -58,13 +58,14 @@ const overlayBtnEl = document.getElementById("overlayBtn");
 
 const MAX_STAGE_COLS = 6;
 const MAX_STAGE_ROWS = 6;
-const STEP_DURATION = 105;
+const STEP_DURATION = 92;
 
 let currentLevelIndex = 0;
 let state = null;
 let isTransitioning = false;
 let isAnimating = false;
 let animationFrameId = null;
+let orbLayer = null;
 
 function cloneGrid(grid) {
   return grid.map((row) => [...row]);
@@ -87,6 +88,75 @@ function countStars(grid) {
     }
   }
   return count;
+}
+
+function injectOrbStyles() {
+  if (document.getElementById("beamatrix-orb-style")) return;
+
+  const style = document.createElement("style");
+  style.id = "beamatrix-orb-style";
+  style.textContent = `
+    .orb-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    .floating-orb {
+      position: absolute;
+      width: calc(var(--cell-size) * 0.72);
+      height: calc(var(--cell-size) * 0.72);
+      transform: translate(-50%, -50%);
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+
+    .floating-orb .orb-trail {
+      position: absolute;
+      width: 78%;
+      height: 16%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, rgba(83, 216, 251, 0.68), transparent);
+      filter: blur(5px);
+      opacity: 0.9;
+    }
+
+    .floating-orb .orb-core {
+      position: absolute;
+      width: 46%;
+      height: 46%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #e8fbff 0%, #89ebff 28%, #53d8fb 68%, #1fb8e8 100%);
+      box-shadow:
+        0 0 14px rgba(83, 216, 251, 0.95),
+        0 0 26px rgba(83, 216, 251, 0.35);
+    }
+
+    .floating-orb.dir-up .orb-trail { transform: rotate(-90deg); }
+    .floating-orb.dir-down .orb-trail { transform: rotate(90deg); }
+    .floating-orb.dir-left .orb-trail { transform: rotate(180deg); }
+    .floating-orb.dir-right .orb-trail { transform: rotate(0deg); }
+  `;
+  document.head.appendChild(style);
+}
+
+function ensureOrbLayer() {
+  injectOrbStyles();
+
+  const wrap = boardEl.parentElement;
+  if (getComputedStyle(wrap).position === "static") {
+    wrap.style.position = "relative";
+  }
+
+  if (!orbLayer) {
+    orbLayer = document.createElement("div");
+    orbLayer.className = "orb-layer";
+    wrap.appendChild(orbLayer);
+  }
+
+  orbLayer.innerHTML = "";
 }
 
 function updateBoardScale() {
@@ -153,107 +223,6 @@ function setMessage(text) {
   messageEl.textContent = text;
 }
 
-function createPlayerOrb(dir, offsetX = 0, offsetY = 0) {
-  const wrap = document.createElement("div");
-  wrap.className = `player dir-${dir}`;
-  wrap.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
-
-  const orb = document.createElement("div");
-  orb.className = "orb";
-
-  const trail = document.createElement("div");
-  trail.className = "orb-trail";
-
-  const core = document.createElement("div");
-  core.className = "orb-core";
-
-  orb.appendChild(trail);
-  orb.appendChild(core);
-  wrap.appendChild(orb);
-
-  return wrap;
-}
-
-function getRenderPlacement() {
-  const renderPos = state.playerRender || state.player;
-  const anchorX = Math.round(renderPos.x);
-  const anchorY = Math.round(renderPos.y);
-
-  const cellSize = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
-  ) || 68;
-  const boardGap = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue("--board-gap")
-  ) || 6;
-
-  const step = cellSize + boardGap;
-  const offsetX = (renderPos.x - anchorX) * step;
-  const offsetY = (renderPos.y - anchorY) * step;
-
-  return { anchorX, anchorY, offsetX, offsetY };
-}
-
-function render() {
-  const {
-    grid,
-    width,
-    playerDir,
-    starsCollected,
-    starsTotal,
-    moves,
-    levelId,
-    lastTrail,
-    startGlow
-  } = state;
-
-  boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
-  boardEl.innerHTML = "";
-
-  const { anchorX, anchorY, offsetX, offsetY } = getRenderPlacement();
-  const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
-
-  for (let y = 0; y < grid.length; y += 1) {
-    for (let x = 0; x < grid[y].length; x += 1) {
-      const tile = grid[y][x];
-      const cell = document.createElement("div");
-      cell.className = "cell";
-
-      if (tile === TILE.WALL) cell.classList.add("wall");
-      if (tile === TILE.FLOOR) cell.classList.add("floor");
-      if (tile === TILE.LEFT) cell.classList.add("left");
-      if (tile === TILE.RIGHT) cell.classList.add("right");
-      if (tile === TILE.STAR) cell.classList.add("floor", "star");
-      if (tile === TILE.EXIT) cell.classList.add("exit");
-      if (tile === TILE.STOP) cell.classList.add("stop");
-
-      const trailKey = `${x},${y}`;
-      if (lastTrailMap.has(trailKey)) {
-        cell.classList.add("trail");
-        if (lastTrailMap.get(trailKey) === lastTrail.length - 1) {
-          cell.classList.add("trail-strong");
-        }
-      }
-
-      if (startGlow.x === x && startGlow.y === y) {
-        cell.classList.add("start-glow");
-      }
-
-      if (anchorX === x && anchorY === y) {
-        if (![TILE.WALL, TILE.LEFT, TILE.RIGHT, TILE.EXIT, TILE.STOP].includes(tile)) {
-          cell.classList.add("floor");
-        }
-        cell.appendChild(createPlayerOrb(playerDir, offsetX, offsetY));
-      }
-
-      boardEl.appendChild(cell);
-    }
-  }
-
-  levelLabelEl.textContent = levelId;
-  starLabelEl.textContent = `${starsCollected} / ${starsTotal}`;
-  moveLabelEl.textContent = moves;
-}
-
 function turnLeft(dir) {
   return {
     up: "left",
@@ -291,6 +260,7 @@ function isBlocked(x, y) {
 function buildMovePath(initialDir) {
   let { x, y } = state.player;
   let currentDir = initialDir;
+  let futureStars = state.starsCollected;
   const steps = [];
 
   while (true) {
@@ -311,6 +281,7 @@ function buildMovePath(initialDir) {
 
     if (tile === TILE.STAR) {
       collectStar = true;
+      futureStars += 1;
     } else if (tile === TILE.LEFT) {
       nextDir = turnLeft(currentDir);
     } else if (tile === TILE.RIGHT) {
@@ -318,11 +289,9 @@ function buildMovePath(initialDir) {
     } else if (tile === TILE.STOP) {
       stopAfterStep = true;
     } else if (tile === TILE.EXIT) {
-      if (state.starsCollected + steps.filter((s) => s.collectStar).length + (collectStar ? 1 : 0) === state.starsTotal) {
+      stopAfterStep = true;
+      if (futureStars === state.starsTotal) {
         levelClear = true;
-        stopAfterStep = true;
-      } else {
-        stopAfterStep = true;
       }
     }
 
@@ -349,7 +318,105 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function animateMove(steps, fallbackDir) {
+function renderOrb() {
+  ensureOrbLayer();
+
+  const floatingOrb = document.createElement("div");
+  floatingOrb.className = `floating-orb dir-${state.playerDir}`;
+
+  const trail = document.createElement("div");
+  trail.className = "orb-trail";
+
+  const core = document.createElement("div");
+  core.className = "orb-core";
+
+  floatingOrb.appendChild(trail);
+  floatingOrb.appendChild(core);
+
+  const wrapRect = boardEl.parentElement.getBoundingClientRect();
+  const boardRect = boardEl.getBoundingClientRect();
+  const cellSize = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--cell-size")
+  ) || 68;
+  const boardGap = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--board-gap")
+  ) || 6;
+  const step = cellSize + boardGap;
+
+  const startX = boardRect.left - wrapRect.left + cellSize / 2;
+  const startY = boardRect.top - wrapRect.top + cellSize / 2;
+
+  const px = startX + state.playerRender.x * step;
+  const py = startY + state.playerRender.y * step;
+
+  floatingOrb.style.left = `${px}px`;
+  floatingOrb.style.top = `${py}px`;
+
+  orbLayer.appendChild(floatingOrb);
+}
+
+function render() {
+  const {
+    grid,
+    width,
+    player,
+    starsCollected,
+    starsTotal,
+    moves,
+    levelId,
+    lastTrail,
+    startGlow
+  } = state;
+
+  boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
+  boardEl.innerHTML = "";
+
+  const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
+
+  for (let y = 0; y < grid.length; y += 1) {
+    for (let x = 0; x < grid[y].length; x += 1) {
+      const tile = grid[y][x];
+      const cell = document.createElement("div");
+      cell.className = "cell";
+
+      if (tile === TILE.WALL) cell.classList.add("wall");
+      if (tile === TILE.FLOOR) cell.classList.add("floor");
+      if (tile === TILE.LEFT) cell.classList.add("left");
+      if (tile === TILE.RIGHT) cell.classList.add("right");
+      if (tile === TILE.STAR) cell.classList.add("floor", "star");
+      if (tile === TILE.EXIT) cell.classList.add("exit");
+      if (tile === TILE.STOP) cell.classList.add("stop");
+
+      const trailKey = `${x},${y}`;
+      if (lastTrailMap.has(trailKey)) {
+        cell.classList.add("trail");
+        if (lastTrailMap.get(trailKey) === lastTrail.length - 1) {
+          cell.classList.add("trail-strong");
+        }
+      }
+
+      if (startGlow.x === x && startGlow.y === y) {
+        cell.classList.add("start-glow");
+      }
+
+      if (player.x === x && player.y === y && !isAnimating) {
+        if (![TILE.WALL, TILE.LEFT, TILE.RIGHT, TILE.EXIT, TILE.STOP].includes(tile)) {
+          cell.classList.add("floor");
+        }
+      }
+
+      boardEl.appendChild(cell);
+    }
+  }
+
+  levelLabelEl.textContent = levelId;
+  starLabelEl.textContent = `${starsCollected} / ${starsTotal}`;
+  moveLabelEl.textContent = moves;
+
+  renderOrb();
+}
+
+function animateMove(steps) {
   if (!steps.length) {
     setMessage("這個方向無法前進。");
     boardEl.animate(
@@ -369,9 +436,12 @@ function animateMove(steps, fallbackDir) {
   moveLabelEl.textContent = state.moves;
 
   let stepIndex = 0;
-  let segmentStart = null;
+  let segmentStart = performance.now();
   let from = { ...state.player };
   let to = { x: steps[0].x, y: steps[0].y };
+
+  state.playerRender = { ...from };
+  render();
 
   function finishStep(step) {
     state.player = { x: step.x, y: step.y };
@@ -408,10 +478,8 @@ function animateMove(steps, fallbackDir) {
     }
   }
 
-  function tick(timestamp) {
-    if (!segmentStart) segmentStart = timestamp;
-
-    const elapsed = timestamp - segmentStart;
+  function tick(now) {
+    const elapsed = now - segmentStart;
     const progress = Math.min(elapsed / STEP_DURATION, 1);
     const eased = easeOutCubic(progress);
 
@@ -422,7 +490,7 @@ function animateMove(steps, fallbackDir) {
       y: from.y + (to.y - from.y) * eased
     };
 
-    render();
+    renderOrb();
 
     if (progress < 1) {
       animationFrameId = requestAnimationFrame(tick);
@@ -437,7 +505,7 @@ function animateMove(steps, fallbackDir) {
     }
 
     stepIndex += 1;
-    segmentStart = timestamp;
+    segmentStart = now;
     from = { x: steps[stepIndex - 1].x, y: steps[stepIndex - 1].y };
     to = { x: steps[stepIndex].x, y: steps[stepIndex].y };
     animationFrameId = requestAnimationFrame(tick);
@@ -448,9 +516,8 @@ function animateMove(steps, fallbackDir) {
 
 function move(dir) {
   if (!state || state.cleared || isTransitioning || isAnimating) return;
-
   const path = buildMovePath(dir);
-  animateMove(path, dir);
+  animateMove(path);
 }
 
 function onLevelClear() {
