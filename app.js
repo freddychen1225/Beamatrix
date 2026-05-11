@@ -14,31 +14,31 @@ const LEVELS = [
   {
     id: 1,
     grid: [
-      [1,1,1,1,1,1],
-      [1,7,2,5,2,1],
-      [1,2,1,1,2,1],
-      [1,2,2,2,6,1],
-      [1,1,1,1,1,1]
+      [1, 1, 1, 1, 1, 1],
+      [1, 7, 2, 5, 2, 1],
+      [1, 2, 1, 1, 2, 1],
+      [1, 2, 2, 2, 6, 1],
+      [1, 1, 1, 1, 1, 1]
     ]
   },
   {
     id: 2,
     grid: [
-      [1,1,1,1,1,1],
-      [1,7,2,4,5,1],
-      [1,2,1,2,2,1],
-      [1,2,2,2,6,1],
-      [1,1,1,1,1,1]
+      [1, 1, 1, 1, 1, 1],
+      [1, 7, 2, 4, 5, 1],
+      [1, 2, 1, 2, 2, 1],
+      [1, 2, 2, 2, 6, 1],
+      [1, 1, 1, 1, 1, 1]
     ]
   },
   {
     id: 3,
     grid: [
-      [1,1,1,1,1,1,1],
-      [1,7,2,3,2,5,1],
-      [1,2,1,1,2,2,1],
-      [1,5,2,8,2,6,1],
-      [1,1,1,1,1,1,1]
+      [1, 1, 1, 1, 1, 1, 1],
+      [1, 7, 2, 3, 2, 5, 1],
+      [1, 2, 1, 1, 2, 2, 1],
+      [1, 5, 2, 8, 2, 6, 1],
+      [1, 1, 1, 1, 1, 1, 1]
     ]
   }
 ];
@@ -49,7 +49,6 @@ const levelLabelEl = document.getElementById("levelLabel");
 const starLabelEl = document.getElementById("starLabel");
 const moveLabelEl = document.getElementById("moveLabel");
 const restartBtn = document.getElementById("restartBtn");
-const moveButtons = document.querySelectorAll(".btn.move");
 const overlayEl = document.getElementById("overlay");
 const overlayTitleEl = document.getElementById("overlayTitle");
 const overlayTextEl = document.getElementById("overlayText");
@@ -60,12 +59,12 @@ let state = null;
 let isTransitioning = false;
 
 function cloneGrid(grid) {
-  return grid.map(row => [...row]);
+  return grid.map((row) => [...row]);
 }
 
 function findStart(grid) {
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
+  for (let y = 0; y < grid.length; y += 1) {
+    for (let x = 0; x < grid[y].length; x += 1) {
       if (grid[y][x] === TILE.START) return { x, y };
     }
   }
@@ -76,7 +75,7 @@ function countStars(grid) {
   let count = 0;
   for (const row of grid) {
     for (const cell of row) {
-      if (cell === TILE.STAR) count++;
+      if (cell === TILE.STAR) count += 1;
     }
   }
   return count;
@@ -115,15 +114,25 @@ function setMessage(text) {
 }
 
 function render() {
-  const { grid, width, player, starsCollected, starsTotal, moves, levelId, lastTrail, startGlow } = state;
+  const {
+    grid,
+    width,
+    player,
+    starsCollected,
+    starsTotal,
+    moves,
+    levelId,
+    lastTrail,
+    startGlow
+  } = state;
 
   boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
   boardEl.innerHTML = "";
 
   const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
 
-  for (let y = 0; y < grid.length; y++) {
-    for (let x = 0; x < grid[y].length; x++) {
+  for (let y = 0; y < grid.length; y += 1) {
+    for (let x = 0; x < grid[y].length; x += 1) {
       const tile = grid[y][x];
       const cell = document.createElement("div");
       cell.className = "cell";
@@ -165,11 +174,21 @@ function render() {
 }
 
 function turnLeft(dir) {
-  return { up: "left", left: "down", down: "right", right: "up" }[dir];
+  return {
+    up: "left",
+    left: "down",
+    down: "right",
+    right: "up"
+  }[dir];
 }
 
 function turnRight(dir) {
-  return { up: "right", right: "down", down: "left", left: "up" }[dir];
+  return {
+    up: "right",
+    right: "down",
+    down: "left",
+    left: "up"
+  }[dir];
 }
 
 function dirVector(dir) {
@@ -229,14 +248,22 @@ function move(dir) {
         render();
         onLevelClear();
         return;
-      } else {
-        break;
       }
+      break;
     }
   }
 
   if (!moved) {
     setMessage("這個方向無法前進。");
+    boardEl.animate(
+      [
+        { transform: "translateX(0)" },
+        { transform: "translateX(-4px)" },
+        { transform: "translateX(4px)" },
+        { transform: "translateX(0)" }
+      ],
+      { duration: 140, easing: "ease-out" }
+    );
     return;
   }
 
@@ -258,11 +285,16 @@ function onLevelClear() {
   const isLastLevel = currentLevelIndex >= LEVELS.length - 1;
 
   if (isLastLevel) {
-    showOverlay("全部完成", `你已完成目前的 ${LEVELS.length} 個測試關卡。`, "重新開始", () => {
-      currentLevelIndex = 0;
-      isTransitioning = false;
-      loadLevel(currentLevelIndex);
-    });
+    showOverlay(
+      "全部完成",
+      `你已完成目前的 ${LEVELS.length} 個測試關卡。`,
+      "重新開始",
+      () => {
+        currentLevelIndex = 0;
+        isTransitioning = false;
+        loadLevel(currentLevelIndex);
+      }
+    );
     setMessage("全部關卡完成。");
     return;
   }
@@ -287,15 +319,13 @@ function showOverlay(title, text, buttonText, onClick) {
   overlayBtnEl.textContent = buttonText;
   overlayBtnEl.onclick = onClick;
   overlayEl.classList.remove("hidden");
+  overlayEl.setAttribute("aria-hidden", "false");
 }
 
 function hideOverlay() {
   overlayEl.classList.add("hidden");
+  overlayEl.setAttribute("aria-hidden", "true");
 }
-
-moveButtons.forEach(btn => {
-  btn.addEventListener("click", () => move(btn.dataset.dir));
-});
 
 restartBtn.addEventListener("click", () => {
   loadLevel(currentLevelIndex);
@@ -308,31 +338,42 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "ArrowRight") move("right");
 });
 
-let touchStartX = 0;
-let touchStartY = 0;
-let touchStartTime = 0;
+let pointerStartX = 0;
+let pointerStartY = 0;
+let pointerStartTime = 0;
+let isPointerDown = false;
 
-boardEl.addEventListener("touchstart", (e) => {
-  const t = e.changedTouches[0];
-  touchStartX = t.clientX;
-  touchStartY = t.clientY;
-  touchStartTime = Date.now();
-}, { passive: true });
+boardEl.addEventListener("pointerdown", (e) => {
+  isPointerDown = true;
+  pointerStartX = e.clientX;
+  pointerStartY = e.clientY;
+  pointerStartTime = Date.now();
+  boardEl.classList.add("dragging");
+});
 
-boardEl.addEventListener("touchend", (e) => {
-  const t = e.changedTouches[0];
-  const dx = t.clientX - touchStartX;
-  const dy = t.clientY - touchStartY;
-  const dt = Date.now() - touchStartTime;
+boardEl.addEventListener("pointerup", (e) => {
+  if (!isPointerDown) return;
 
-  if (dt > 700) return;
-  if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+  isPointerDown = false;
+  boardEl.classList.remove("dragging");
+
+  const dx = e.clientX - pointerStartX;
+  const dy = e.clientY - pointerStartY;
+  const dt = Date.now() - pointerStartTime;
+
+  if (dt > 600) return;
+  if (Math.abs(dx) < 22 && Math.abs(dy) < 22) return;
 
   if (Math.abs(dx) > Math.abs(dy)) {
     move(dx > 0 ? "right" : "left");
   } else {
     move(dy > 0 ? "down" : "up");
   }
-}, { passive: true });
+});
+
+boardEl.addEventListener("pointercancel", () => {
+  isPointerDown = false;
+  boardEl.classList.remove("dragging");
+});
 
 loadLevel(currentLevelIndex);

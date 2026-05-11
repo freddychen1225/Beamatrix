@@ -135,6 +135,11 @@ button {
   gap: 6px;
   user-select: none;
   touch-action: none;
+  cursor: grab;
+}
+
+.board.dragging {
+  cursor: grabbing;
 }
 
 .cell {
@@ -262,42 +267,15 @@ button {
   content: "↷";
 }
 
-.legend {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px 14px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.chip {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  display: inline-block;
-}
-
-.chip.wall { background: var(--wall); }
-.chip.floor { background: var(--floor); }
-.chip.left { background: linear-gradient(180deg, #ffd76d, #e8b640); }
-.chip.right { background: linear-gradient(180deg, #ffb347, #f08412); }
-.chip.stop { background: linear-gradient(180deg, #a5b1c2, #7f8da3); }
-.chip.star { background: var(--star); }
-.chip.exit { background: linear-gradient(180deg, #95f2ad, #52c978); }
-
 .instruction-panel {
   text-align: center;
+  padding: 16px 14px;
 }
 
 .instruction-title {
   margin: 0 0 6px;
   font-weight: 800;
+  font-size: 1rem;
 }
 
 .instruction-text {
@@ -307,26 +285,13 @@ button {
   font-size: 0.95rem;
 }
 
-.controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-}
-
-.controls-hint {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--muted);
-}
-
-.middle-row {
-  display: flex;
-  gap: 8px;
-}
-
-.compact-controls {
-  opacity: 0.78;
+.message {
+  margin: 2px 0 0;
+  min-height: 24px;
+  text-align: center;
+  color: var(--accent-2);
+  font-weight: 700;
+  font-size: 0.98rem;
 }
 
 .btn {
@@ -345,24 +310,6 @@ button {
 .btn.primary {
   background: linear-gradient(180deg, #1f8ef1, #1768c6);
   color: white;
-}
-
-.btn.move {
-  min-width: 52px;
-  min-height: 42px;
-  background: linear-gradient(180deg, #243b68, #1c2f52);
-  color: white;
-  box-shadow: var(--shadow);
-  font-size: 1rem;
-  opacity: 0.86;
-}
-
-.message {
-  margin: 2px 0 0;
-  min-height: 24px;
-  text-align: center;
-  color: var(--accent-2);
-  font-weight: 700;
 }
 
 .overlay {
@@ -406,15 +353,5 @@ button {
 
   .brand h1 {
     font-size: 1.35rem;
-  }
-
-  .btn.move {
-    min-width: 48px;
-    min-height: 40px;
-    font-size: 0.95rem;
-  }
-
-  .legend {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
