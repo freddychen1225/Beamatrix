@@ -1,20 +1,21 @@
 :root {
-  --bg: #0d1321;
-  --panel: #151d2f;
-  --panel-2: #1b2740;
+  --bg: #0b1020;
+  --panel: #141c2f;
+  --panel-2: #1c2742;
   --text: #edf2f7;
   --muted: #9fb0c8;
   --accent: #53d8fb;
   --accent-2: #7cfc9a;
-  --danger: #ff6b6b;
   --wall: #33415c;
-  --floor: #1f2a44;
-  --left: #ffb703;
-  --right: #fb8500;
+  --floor: #1d2842;
+  --left: #ffd166;
+  --right: #ff9f1c;
   --stop: #8d99ae;
   --star: #ffe66d;
   --exit: #80ed99;
   --player: #53d8fb;
+  --trail: rgba(83, 216, 251, 0.32);
+  --trail-strong: rgba(83, 216, 251, 0.72);
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
   --radius: 18px;
   --cell-size: min(11vw, 56px);
@@ -29,7 +30,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top, rgba(83, 216, 251, 0.08), transparent 30%),
+    linear-gradient(180deg, #09101d, #0d1321);
   color: var(--text);
   font-family: Arial, "Noto Sans TC", sans-serif;
   min-height: 100%;
@@ -69,6 +72,7 @@ button {
   margin: 0;
   font-size: 1.6rem;
   line-height: 1.1;
+  letter-spacing: 0.5px;
 }
 
 .brand p {
@@ -84,10 +88,12 @@ button {
 }
 
 .panel {
-  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  background: linear-gradient(180deg, rgba(20, 28, 47, 0.96), rgba(28, 39, 66, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius);
   padding: 14px;
   box-shadow: var(--shadow);
+  backdrop-filter: blur(4px);
 }
 
 .info-panel {
@@ -116,10 +122,12 @@ button {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(180deg, #111827, #172033);
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(23, 32, 51, 0.98));
   border-radius: 22px;
   padding: 14px;
   box-shadow: var(--shadow);
+  border: 1px solid rgba(83, 216, 251, 0.08);
 }
 
 .board {
@@ -137,30 +145,82 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .cell.wall {
-  background: var(--wall);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.05), transparent 35%),
+    var(--wall);
 }
 
 .cell.floor {
-  background: var(--floor);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent 50%),
+    var(--floor);
+}
+
+.cell.floor::after,
+.cell.exit::after,
+.cell.stop::after,
+.cell.left::after,
+.cell.right::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  pointer-events: none;
 }
 
 .cell.left {
-  background: var(--left);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), transparent 40%),
+    linear-gradient(180deg, #ffd76d, #e8b640);
 }
 
 .cell.right {
-  background: var(--right);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), transparent 40%),
+    linear-gradient(180deg, #ffb347, #f08412);
 }
 
 .cell.stop {
-  background: var(--stop);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.12), transparent 40%),
+    linear-gradient(180deg, #a5b1c2, #7f8da3);
 }
 
 .cell.exit {
-  background: var(--exit);
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,0.16), transparent 55%),
+    linear-gradient(180deg, #95f2ad, #52c978);
+  box-shadow: inset 0 0 18px rgba(128, 237, 153, 0.28);
+}
+
+.cell.start-glow {
+  box-shadow: 0 0 0 2px rgba(83, 216, 251, 0.4), 0 0 18px rgba(83, 216, 251, 0.25);
+}
+
+.cell.trail {
+  box-shadow: inset 0 0 0 999px var(--trail);
+}
+
+.cell.trail-strong {
+  box-shadow:
+    inset 0 0 0 999px var(--trail-strong),
+    0 0 12px rgba(83, 216, 251, 0.22);
+}
+
+.cell.player::before {
+  content: "";
+  position: absolute;
+  width: 74%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(83,216,251,0.75), transparent);
+  filter: blur(3px);
+  opacity: 0.85;
 }
 
 .cell.player::after {
@@ -169,29 +229,29 @@ button {
   height: 48%;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #dff9ff, var(--player));
-  box-shadow: 0 0 14px rgba(83, 216, 251, 0.9);
+  box-shadow:
+    0 0 14px rgba(83, 216, 251, 0.95),
+    0 0 26px rgba(83, 216, 251, 0.35);
 }
 
 .cell.star::before {
   content: "✦";
   position: absolute;
   font-size: 1.2rem;
-  color: #1c1c1c;
-  text-shadow: 0 0 10px rgba(255, 230, 109, 0.55);
-}
-
-.cell.star.floor::before,
-.cell.star.stop::before,
-.cell.star.exit::before {
   color: var(--star);
+  text-shadow:
+    0 0 8px rgba(255, 230, 109, 0.8),
+    0 0 16px rgba(255, 230, 109, 0.35);
+  z-index: 2;
 }
 
 .cell.left::before,
 .cell.right::before {
   position: absolute;
-  font-size: 1.15rem;
-  font-weight: bold;
-  color: #1b1b1b;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #232323;
+  z-index: 2;
 }
 
 .cell.left::before {
@@ -225,11 +285,11 @@ button {
 
 .chip.wall { background: var(--wall); }
 .chip.floor { background: var(--floor); }
-.chip.left { background: var(--left); }
-.chip.right { background: var(--right); }
-.chip.stop { background: var(--stop); }
+.chip.left { background: linear-gradient(180deg, #ffd76d, #e8b640); }
+.chip.right { background: linear-gradient(180deg, #ffb347, #f08412); }
+.chip.stop { background: linear-gradient(180deg, #a5b1c2, #7f8da3); }
 .chip.star { background: var(--star); }
-.chip.exit { background: var(--exit); }
+.chip.exit { background: linear-gradient(180deg, #95f2ad, #52c978); }
 
 .instruction-panel {
   text-align: center;
@@ -250,17 +310,23 @@ button {
 .controls {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+}
+
+.controls-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .middle-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .compact-controls {
-  opacity: 0.92;
+  opacity: 0.78;
 }
 
 .btn {
@@ -282,12 +348,13 @@ button {
 }
 
 .btn.move {
-  min-width: 64px;
-  min-height: 50px;
+  min-width: 52px;
+  min-height: 42px;
   background: linear-gradient(180deg, #243b68, #1c2f52);
   color: white;
   box-shadow: var(--shadow);
-  font-size: 1.1rem;
+  font-size: 1rem;
+  opacity: 0.86;
 }
 
 .message {
@@ -342,8 +409,9 @@ button {
   }
 
   .btn.move {
-    min-width: 58px;
-    min-height: 46px;
+    min-width: 48px;
+    min-height: 40px;
+    font-size: 0.95rem;
   }
 
   .legend {

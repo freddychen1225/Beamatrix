@@ -100,7 +100,9 @@ function loadLevel(index) {
     starsCollected: 0,
     starsTotal: countStars(grid),
     moves: 0,
-    cleared: false
+    cleared: false,
+    lastTrail: [],
+    startGlow: { ...start }
   };
 
   hideOverlay();
@@ -113,10 +115,12 @@ function setMessage(text) {
 }
 
 function render() {
-  const { grid, width, player, starsCollected, starsTotal, moves, levelId } = state;
+  const { grid, width, player, starsCollected, starsTotal, moves, levelId, lastTrail, startGlow } = state;
 
   boardEl.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
   boardEl.innerHTML = "";
+
+  const lastTrailMap = new Map(lastTrail.map((p, i) => [`${p.x},${p.y}`, i]));
 
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
@@ -131,6 +135,18 @@ function render() {
       if (tile === TILE.STAR) cell.classList.add("floor", "star");
       if (tile === TILE.EXIT) cell.classList.add("exit");
       if (tile === TILE.STOP) cell.classList.add("stop");
+
+      const trailKey = `${x},${y}`;
+      if (lastTrailMap.has(trailKey)) {
+        cell.classList.add("trail");
+        if (lastTrailMap.get(trailKey) === lastTrail.length - 1) {
+          cell.classList.add("trail-strong");
+        }
+      }
+
+      if (startGlow.x === x && startGlow.y === y) {
+        cell.classList.add("start-glow");
+      }
 
       if (player.x === x && player.y === y) {
         cell.classList.add("player");
@@ -178,6 +194,7 @@ function move(dir) {
   let { x, y } = state.player;
   let currentDir = dir;
   let moved = false;
+  const traveled = [];
 
   while (true) {
     const { dx, dy } = dirVector(currentDir);
@@ -189,6 +206,7 @@ function move(dir) {
     x = nx;
     y = ny;
     moved = true;
+    traveled.push({ x, y });
 
     const tile = state.grid[y][x];
 
@@ -204,6 +222,8 @@ function move(dir) {
     } else if (tile === TILE.EXIT) {
       if (state.starsCollected === state.starsTotal) {
         state.player = { x, y };
+        state.startGlow = { x, y };
+        state.lastTrail = traveled;
         state.moves += 1;
         state.cleared = true;
         render();
@@ -221,6 +241,8 @@ function move(dir) {
   }
 
   state.player = { x, y };
+  state.startGlow = { x, y };
+  state.lastTrail = traveled;
   state.moves += 1;
   render();
 
@@ -233,7 +255,6 @@ function move(dir) {
 
 function onLevelClear() {
   isTransitioning = true;
-
   const isLastLevel = currentLevelIndex >= LEVELS.length - 1;
 
   if (isLastLevel) {
