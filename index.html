@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+  <meta name="theme-color" content="#0d1321" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Beamatrix" />
+
+  <title>光軌矩陣 Beamatrix</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>光軌矩陣</h1>
+        <p>Beamatrix</p>
+      </div>
+      <button id="restartBtn" class="btn ghost">重來</button>
+    </header>
+
+    <main class="main">
+      <section class="panel info-panel">
+        <div class="info-row">
+          <span>關卡</span>
+          <strong id="levelLabel">1</strong>
+        </div>
+        <div class="info-row">
+          <span>收集</span>
+          <strong id="starLabel">0 / 0</strong>
+        </div>
+        <div class="info-row">
+          <span>步數</span>
+          <strong id="moveLabel">0</strong>
+        </div>
+      </section>
+
+      <section class="board-wrap">
+        <div id="board" class="board" aria-label="遊戲棋盤"></div>
+      </section>
+
+      <section class="panel legend">
+        <div class="legend-item"><span class="chip wall"></span><span>牆</span></div>
+        <div class="legend-item"><span class="chip floor"></span><span>地板</span></div>
+        <div class="legend-item"><span class="chip left"></span><span>左轉板</span></div>
+        <div class="legend-item"><span class="chip right"></span><span>右轉板</span></div>
+        <div class="legend-item"><span class="chip stop"></span><span>停止格</span></div>
+        <div class="legend-item"><span class="chip star"></span><span>能量星</span></div>
+        <div class="legend-item"><span class="chip exit"></span><span>出口</span></div>
+      </section>
+
+      <section class="controls">
+        <button class="btn move" data-dir="up">↑</button>
+        <div class="middle-row">
+          <button class="btn move" data-dir="left">←</button>
+          <button class="btn move" data-dir="down">↓</button>
+          <button class="btn move" data-dir="right">→</button>
+        </div>
+      </section>
+
+      <p id="message" class="message">滑動或按方向鍵開始。</p>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+  </script>
+</body>
+</html>
