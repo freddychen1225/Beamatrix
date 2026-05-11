@@ -81,6 +81,24 @@ function countStars(grid) {
   return count;
 }
 
+function updateBoardScale(width, height) {
+  const root = document.documentElement;
+  const appStyle = getComputedStyle(root);
+  const boardGap = parseFloat(appStyle.getPropertyValue("--board-gap")) || 6;
+
+  const safeHorizontal = 28;
+  const safeVertical = 28;
+
+  const availableWidth = Math.max(280, window.innerWidth - safeHorizontal);
+  const availableHeight = Math.max(280, window.innerHeight - 320 - safeVertical);
+
+  const sizeByWidth = (availableWidth - boardGap * (width - 1)) / width;
+  const sizeByHeight = (availableHeight - boardGap * (height - 1)) / height;
+
+  const cellSize = Math.floor(Math.min(sizeByWidth, sizeByHeight, 82));
+  root.style.setProperty("--cell-size", `${Math.max(cellSize, 44)}px`);
+}
+
 function loadLevel(index) {
   const level = LEVELS[index];
   const grid = cloneGrid(level.grid);
@@ -104,6 +122,7 @@ function loadLevel(index) {
     startGlow: { ...start }
   };
 
+  updateBoardScale(state.width, state.height);
   hideOverlay();
   render();
   setMessage("請在棋盤上滑動開始。");
@@ -362,7 +381,7 @@ boardEl.addEventListener("pointerup", (e) => {
   const dt = Date.now() - pointerStartTime;
 
   if (dt > 600) return;
-  if (Math.abs(dx) < 22 && Math.abs(dy) < 22) return;
+  if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
 
   if (Math.abs(dx) > Math.abs(dy)) {
     move(dx > 0 ? "right" : "left");
@@ -374,6 +393,12 @@ boardEl.addEventListener("pointerup", (e) => {
 boardEl.addEventListener("pointercancel", () => {
   isPointerDown = false;
   boardEl.classList.remove("dragging");
+});
+
+window.addEventListener("resize", () => {
+  if (!state) return;
+  updateBoardScale(state.width, state.height);
+  render();
 });
 
 loadLevel(currentLevelIndex);
