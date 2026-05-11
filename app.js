@@ -14,11 +14,11 @@ const LEVELS = [
   {
     id: 1,
     grid: [
-      [1, 1, 1, 1, 1, 1],
-      [1, 7, 2, 5, 2, 1],
-      [1, 2, 1, 1, 2, 1],
-      [1, 2, 2, 2, 6, 1],
-      [1, 1, 1, 1, 1, 1]
+      [1, 1, 1, 1, 1],
+      [1, 7, 2, 5, 1],
+      [1, 2, 2, 2, 1],
+      [1, 2, 2, 6, 1],
+      [1, 1, 1, 1, 1]
     ]
   },
   {
@@ -28,17 +28,19 @@ const LEVELS = [
       [1, 7, 2, 4, 5, 1],
       [1, 2, 1, 2, 2, 1],
       [1, 2, 2, 2, 6, 1],
+      [1, 2, 1, 1, 1, 1],
       [1, 1, 1, 1, 1, 1]
     ]
   },
   {
     id: 3,
     grid: [
-      [1, 1, 1, 1, 1, 1, 1],
-      [1, 7, 2, 3, 2, 5, 1],
-      [1, 2, 1, 1, 2, 2, 1],
-      [1, 5, 2, 8, 2, 6, 1],
-      [1, 1, 1, 1, 1, 1, 1]
+      [1, 1, 1, 1, 1, 1],
+      [1, 7, 2, 3, 2, 1],
+      [1, 2, 1, 1, 5, 1],
+      [1, 2, 8, 2, 2, 1],
+      [1, 5, 2, 2, 6, 1],
+      [1, 1, 1, 1, 1, 1]
     ]
   }
 ];
@@ -54,8 +56,8 @@ const overlayTitleEl = document.getElementById("overlayTitle");
 const overlayTextEl = document.getElementById("overlayText");
 const overlayBtnEl = document.getElementById("overlayBtn");
 
-const MAX_STAGE_COLS = 7;
-const MAX_STAGE_ROWS = 7;
+const MAX_STAGE_COLS = 6;
+const MAX_STAGE_ROWS = 6;
 
 let currentLevelIndex = 0;
 let state = null;
@@ -89,17 +91,17 @@ function updateBoardScale() {
   const style = getComputedStyle(root);
   const boardGap = parseFloat(style.getPropertyValue("--board-gap")) || 6;
 
-  const sidePadding = 42;
-  const topUiReserve = 310;
+  const sidePadding = 26;
+  const topUiReserve = 280;
 
-  const availableWidth = Math.max(300, window.innerWidth - sidePadding);
-  const availableHeight = Math.max(300, window.innerHeight - topUiReserve);
+  const availableWidth = Math.max(320, window.innerWidth - sidePadding);
+  const availableHeight = Math.max(340, window.innerHeight - topUiReserve);
 
   const sizeByWidth = (availableWidth - boardGap * (MAX_STAGE_COLS - 1)) / MAX_STAGE_COLS;
   const sizeByHeight = (availableHeight - boardGap * (MAX_STAGE_ROWS - 1)) / MAX_STAGE_ROWS;
 
-  const cellSize = Math.floor(Math.min(sizeByWidth, sizeByHeight, 82));
-  const finalCellSize = Math.max(cellSize, 44);
+  const cellSize = Math.floor(Math.min(sizeByWidth, sizeByHeight, 92));
+  const finalCellSize = Math.max(cellSize, 54);
   const stageSize = finalCellSize * MAX_STAGE_COLS + boardGap * (MAX_STAGE_COLS - 1);
 
   root.style.setProperty("--cell-size", `${finalCellSize}px`);
@@ -121,6 +123,7 @@ function loadLevel(index) {
     width: grid[0].length,
     height: grid.length,
     player: { ...start },
+    playerDir: "right",
     starsCollected: 0,
     starsTotal: countStars(grid),
     moves: 0,
@@ -139,11 +142,32 @@ function setMessage(text) {
   messageEl.textContent = text;
 }
 
+function createPlayerOrb(dir) {
+  const orb = document.createElement("div");
+  orb.className = `orb`;
+
+  const trail = document.createElement("div");
+  trail.className = "orb-trail";
+
+  const core = document.createElement("div");
+  core.className = "orb-core";
+
+  orb.appendChild(trail);
+  orb.appendChild(core);
+
+  const wrap = document.createElement("div");
+  wrap.className = `player dir-${dir}`;
+  wrap.appendChild(orb);
+
+  return wrap;
+}
+
 function render() {
   const {
     grid,
     width,
     player,
+    playerDir,
     starsCollected,
     starsTotal,
     moves,
@@ -184,10 +208,10 @@ function render() {
       }
 
       if (player.x === x && player.y === y) {
-        cell.classList.add("player");
         if (![TILE.WALL, TILE.LEFT, TILE.RIGHT, TILE.EXIT, TILE.STOP].includes(tile)) {
           cell.classList.add("floor");
         }
+        cell.appendChild(createPlayerOrb(playerDir));
       }
 
       boardEl.appendChild(cell);
@@ -267,6 +291,7 @@ function move(dir) {
     } else if (tile === TILE.EXIT) {
       if (state.starsCollected === state.starsTotal) {
         state.player = { x, y };
+        state.playerDir = currentDir;
         state.startGlow = { x, y };
         state.lastTrail = traveled;
         state.moves += 1;
@@ -294,6 +319,7 @@ function move(dir) {
   }
 
   state.player = { x, y };
+  state.playerDir = currentDir;
   state.startGlow = { x, y };
   state.lastTrail = traveled;
   state.moves += 1;
