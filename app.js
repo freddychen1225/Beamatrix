@@ -58,14 +58,14 @@ const overlayBtnEl = document.getElementById("overlayBtn");
 
 const MAX_STAGE_COLS = 6;
 const MAX_STAGE_ROWS = 6;
-const STEP_DURATION = 92;
+const STEP_DURATION = 90;
 
 let currentLevelIndex = 0;
 let state = null;
 let isTransitioning = false;
 let isAnimating = false;
 let animationFrameId = null;
-let orbLayer = null;
+let playerFxLayer = null;
 
 function cloneGrid(grid) {
   return grid.map((row) => [...row]);
@@ -90,73 +90,100 @@ function countStars(grid) {
   return count;
 }
 
-function injectOrbStyles() {
-  if (document.getElementById("beamatrix-orb-style")) return;
+function injectPlayerFxStyles() {
+  if (document.getElementById("beamatrix-playerfx-style")) return;
 
   const style = document.createElement("style");
-  style.id = "beamatrix-orb-style";
+  style.id = "beamatrix-playerfx-style";
   style.textContent = `
-    .orb-layer {
+    .player-fx-layer {
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: 30;
+      z-index: 18;
     }
 
-    .floating-orb {
+    .player-highlight {
       position: absolute;
-      width: calc(var(--cell-size) * 0.72);
-      height: calc(var(--cell-size) * 0.72);
+      width: calc(var(--cell-size) * 0.92);
+      height: calc(var(--cell-size) * 0.92);
       transform: translate(-50%, -50%);
-      display: grid;
-      place-items: center;
-      pointer-events: none;
-    }
-
-    .floating-orb .orb-trail {
-      position: absolute;
-      width: 78%;
-      height: 16%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, transparent, rgba(83, 216, 251, 0.68), transparent);
-      filter: blur(5px);
-      opacity: 0.9;
-    }
-
-    .floating-orb .orb-core {
-      position: absolute;
-      width: 46%;
-      height: 46%;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #e8fbff 0%, #89ebff 28%, #53d8fb 68%, #1fb8e8 100%);
+      border-radius: calc(var(--cell-size) * 0.26);
+      background:
+        linear-gradient(180deg, rgba(118, 232, 255, 0.34), rgba(83, 216, 251, 0.18));
       box-shadow:
-        0 0 14px rgba(83, 216, 251, 0.95),
-        0 0 26px rgba(83, 216, 251, 0.35);
+        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
+        0 0 18px rgba(83, 216, 251, 0.26);
+      backdrop-filter: blur(2px);
     }
 
-    .floating-orb.dir-up .orb-trail { transform: rotate(-90deg); }
-    .floating-orb.dir-down .orb-trail { transform: rotate(90deg); }
-    .floating-orb.dir-left .orb-trail { transform: rotate(180deg); }
-    .floating-orb.dir-right .orb-trail { transform: rotate(0deg); }
+    .player-highlight::before {
+      content: "";
+      position: absolute;
+      inset: 18%;
+      border-radius: calc(var(--cell-size) * 0.18);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(225, 251, 255, 0.75), rgba(83, 216, 251, 0.18) 60%, transparent 75%);
+      opacity: 0.95;
+    }
+
+    .player-highlight::after {
+      content: "";
+      position: absolute;
+      width: 28%;
+      height: 28%;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 35%, #effcff 0%, #aef3ff 35%, #53d8fb 72%, #29bce6 100%);
+      box-shadow:
+        0 0 10px rgba(83, 216, 251, 0.95),
+        0 0 18px rgba(83, 216, 251, 0.32);
+    }
+
+    .player-highlight.dir-up {
+      box-shadow:
+        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
+        0 -6px 22px rgba(83, 216, 251, 0.28);
+    }
+
+    .player-highlight.dir-down {
+      box-shadow:
+        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
+        0 6px 22px rgba(83, 216, 251, 0.28);
+    }
+
+    .player-highlight.dir-left {
+      box-shadow:
+        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
+        -6px 0 22px rgba(83, 216, 251, 0.28);
+    }
+
+    .player-highlight.dir-right {
+      box-shadow:
+        inset 0 0 0 2px rgba(151, 239, 255, 0.55),
+        6px 0 22px rgba(83, 216, 251, 0.28);
+    }
   `;
   document.head.appendChild(style);
 }
 
-function ensureOrbLayer() {
-  injectOrbStyles();
+function ensurePlayerFxLayer() {
+  injectPlayerFxStyles();
 
   const wrap = boardEl.parentElement;
   if (getComputedStyle(wrap).position === "static") {
     wrap.style.position = "relative";
   }
 
-  if (!orbLayer) {
-    orbLayer = document.createElement("div");
-    orbLayer.className = "orb-layer";
-    wrap.appendChild(orbLayer);
+  if (!playerFxLayer) {
+    playerFxLayer = document.createElement("div");
+    playerFxLayer.className = "player-fx-layer";
+    wrap.appendChild(playerFxLayer);
   }
 
-  orbLayer.innerHTML = "";
+  playerFxLayer.innerHTML = "";
 }
 
 function updateBoardScale() {
@@ -318,20 +345,11 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function renderOrb() {
-  ensureOrbLayer();
+function renderPlayerFx() {
+  ensurePlayerFxLayer();
 
-  const floatingOrb = document.createElement("div");
-  floatingOrb.className = `floating-orb dir-${state.playerDir}`;
-
-  const trail = document.createElement("div");
-  trail.className = "orb-trail";
-
-  const core = document.createElement("div");
-  core.className = "orb-core";
-
-  floatingOrb.appendChild(trail);
-  floatingOrb.appendChild(core);
+  const fx = document.createElement("div");
+  fx.className = `player-highlight dir-${state.playerDir}`;
 
   const wrapRect = boardEl.parentElement.getBoundingClientRect();
   const boardRect = boardEl.getBoundingClientRect();
@@ -349,10 +367,10 @@ function renderOrb() {
   const px = startX + state.playerRender.x * step;
   const py = startY + state.playerRender.y * step;
 
-  floatingOrb.style.left = `${px}px`;
-  floatingOrb.style.top = `${py}px`;
+  fx.style.left = `${px}px`;
+  fx.style.top = `${py}px`;
 
-  orbLayer.appendChild(floatingOrb);
+  playerFxLayer.appendChild(fx);
 }
 
 function render() {
@@ -400,9 +418,7 @@ function render() {
       }
 
       if (player.x === x && player.y === y && !isAnimating) {
-        if (![TILE.WALL, TILE.LEFT, TILE.RIGHT, TILE.EXIT, TILE.STOP].includes(tile)) {
-          cell.classList.add("floor");
-        }
+        cell.classList.add("trail-strong");
       }
 
       boardEl.appendChild(cell);
@@ -413,7 +429,7 @@ function render() {
   starLabelEl.textContent = `${starsCollected} / ${starsTotal}`;
   moveLabelEl.textContent = moves;
 
-  renderOrb();
+  renderPlayerFx();
 }
 
 function animateMove(steps) {
@@ -490,7 +506,7 @@ function animateMove(steps) {
       y: from.y + (to.y - from.y) * eased
     };
 
-    renderOrb();
+    renderPlayerFx();
 
     if (progress < 1) {
       animationFrameId = requestAnimationFrame(tick);
